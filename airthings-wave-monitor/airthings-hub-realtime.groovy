@@ -44,6 +44,7 @@ metadata {
     capability "Relative Humidity Measurement"
     capability "Pressure Measurement"
     capability "Carbon Dioxide Measurement"
+    capability "Pressure Measurement"
     capability "Initialize"
     capability "Polling"
     capability "Battery"
