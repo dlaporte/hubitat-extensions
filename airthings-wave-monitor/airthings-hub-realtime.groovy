@@ -308,7 +308,7 @@ def initialize() {
   unschedule()
   if (debug) log.debug("AirThings: initialize() called")
 
-  if (!acurite_username || !acurite_password || !device_id) {
+  if (!username || !password || !deviceId) {
     log.error("AirThings: required fields not completed.  Please complete for proper operation.")
     return
   }
