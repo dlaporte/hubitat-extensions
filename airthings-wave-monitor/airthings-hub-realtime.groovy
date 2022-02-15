@@ -49,7 +49,7 @@ metadata {
 	    preferences {
           section("Airthings Cloud Settings:") {
 	           input name: "username", type: "string", title: "Airthings Cloud Username", required: true, displayDuringSetup: true, defaultValue: null
-	           input name: "password", type: "string", title: "Airthings Cloud Password", required: true, displayDuringSetup: true, defaultValue: null
+	           input name: "password", type: "password", title: "Airthings Cloud Password", required: true, displayDuringSetup: true, defaultValue: null
  	           input name: "deviceId", type: "string", title: "Airthings Device ID", required: true, displayDuringSetup: true, defaultValue: null
           }
 	    }
