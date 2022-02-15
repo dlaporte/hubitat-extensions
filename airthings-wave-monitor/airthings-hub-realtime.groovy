@@ -16,6 +16,12 @@
  *  Original driver "Copyright 2020 LostJen". Updated the driver to support Airthings Wave
  *  cloud-based reporting.
  *
+ *  Updated driver w/scheduling based on Joseph Orlando's (joeyx22lm) Airthings driver
+ *
+ *  Last Update 02/14/2022
+ *
+ *  v0.0.2 - added scheduling
+ *
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -30,10 +36,10 @@
  *
  */
 metadata {
-	definition (name: "Airthings Hub Realtime Air Quality Monitor", namespace: "com.joeyorlando.hubitat.airthings", author: "joeyx22lm", importUrl: "https://raw.githubusercontent.com/joeyx22lm/hubitat-extensions/main/airthings-wave-monitor/airthings-hub-historical.groovy") {
+    definition (name: "Airthings Hub Realtime Air Quality Monitor", namespace: "com.joeyorlando.hubitat.airthings", author: "joeyx22lm", importUrl: "https://raw.githubusercontent.com/joeyx22lm/hubitat-extensions/main/airthings-wave-monitor/airthings-hub-historical.groovy") {
       capability "Sensor"
       capability "Temperature Measurement"
-	    capability "Relative Humidity Measurement"
+      capability "Relative Humidity Measurement"
       capability "Pressure Measurement"
       capability "Carbon Dioxide Measurement"
 
@@ -46,20 +52,25 @@ metadata {
       attribute "radonShortTermAvg", "number"
       attribute "lastUpdate", "date"
 
-	    preferences {
+        preferences {
           section("Airthings Cloud Settings:") {
-	           input name: "username", type: "string", title: "Airthings Cloud Username", required: true, displayDuringSetup: true, defaultValue: null
-	           input name: "password", type: "password", title: "Airthings Cloud Password", required: true, displayDuringSetup: true, defaultValue: null
- 	           input name: "deviceId", type: "string", title: "Airthings Device ID", required: true, displayDuringSetup: true, defaultValue: null
+               input name: "username", type: "string", title: "Airthings Cloud Username", required: true, displayDuringSetup: true, defaultValue: null
+               input name: "password", type: "password", title: "Airthings Cloud Password", required: true, displayDuringSetup: true, defaultValue: null
+              input name: "deviceId", type: "string", title: "Airthings Device ID", required: true, displayDuringSetup: true, defaultValue: null
+                input "poll_interval", "enum", title: "Poll Interval:", required: false, defaultValue: "5 Minutes", options: ["5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
+      input "debug", "bool", required: true, defaultValue: false, title: "Debug Logging"
           }
-	    }
+        }
+    }
+}
 
-      command "fetchData", null
-	}
+def poll() {
+  if (debug) log.debug("AirThings: poll() called")
+  fetchData()
 }
 
 def fetchData() {
-    log.debug("Attempting to fetch AirThings data via CSV download -- last pull date: ${device.currentValue("lastUpdate")}")
+    if (debug) log.debug("AirThings: attempting to fetch data via CSV download -- last pull date: ${device.currentValue("lastUpdate")}")
     doLogin()
 }
 
@@ -85,7 +96,7 @@ def doLogin() {
     {
         if(e.message.toString() != "OK")
         {
-            log.error("Unable to login as username: ${username} - ${e.message}")
+            log.error("AirThings: unable to login as username: ${username} - ${e.message}")
         }
     }
 }
@@ -93,19 +104,19 @@ def doLogin() {
 def handleLogin(response, data) {
     if(response.hasError())
     {
-        log.error("response.error = ${response.getErrorMessage()}")
+        log.error("AirThings: response.error = ${response.getErrorMessage()}")
         return;
     }
     if(response.getStatus() != 200) {
-        log.error("Unexpected HTTP Status Code: ${response.getStatus()}")
+        log.error("AirThings: unexpected HTTP Status Code: ${response.getStatus()}")
         return;
     }
     def body = response.getJson()
     if(!body.containsKey("access_token")) {
-        log.error("HTTP response did not contain 'access_token': ${body}")
+        log.error("AirThings: HTTP response did not contain 'access_token': ${body}")
         return;
     }
-    log.debug("Logged in successfully as username: ${username}")
+    if (debug) log.debug("AirThings: logged in successfully as username: ${username}")
     doOAuthAuthorization(body.get("access_token").trim())
 }
 
@@ -133,7 +144,7 @@ def doOAuthAuthorization(bearerToken) {
     {
         if(e.message.toString() != "OK")
         {
-            log.error("Unable to POST to OAuthAuthorization with token ${bearerToken} - ${e.message}")
+            log.error("AirThings: unable to POST to OAuthAuthorization with token ${bearerToken} - ${e.message}")
         }
     }
 }
@@ -141,24 +152,24 @@ def doOAuthAuthorization(bearerToken) {
 def handleOAuthAuthorization(response, data) {
     if(response.hasError())
     {
-        log.error("OAuth authorization response.error = ${response.getErrorMessage()}")
+        log.error("AirThings: OAuth authorization response.error = ${response.getErrorMessage()}")
         return;
     }
     if(response.getStatus() != 200) {
-        log.error("OAuth authorization Unexpected HTTP Status Code: ${response.getStatus()}")
+        log.error("AirThings: OAuth authorization Unexpected HTTP Status Code: ${response.getStatus()}")
         return;
     }
     def body = response.getJson()
     if(!body.containsKey("redirect_uri")) {
-        log.error("OAuth authorization HTTP response did not contain 'redirect_uri': ${body}")
+        log.error("AirThings: OAuth authorization HTTP response did not contain 'redirect_uri': ${body}")
         return;
     }
     try {
         def authCode = body.get("redirect_uri").split("code=")[1];
-        log.debug("Successfully obtained OAuth authorization code")
+        if (debug) log.debug("AirThings: successfully obtained OAuth authorization code")
         doOAuthAuthentication(authCode)
     } catch (Exception e) {
-        log.error("Unable to extract OAuth authorization code from body: ${body} - ${e.message}")
+        log.error("AirThings: unable to extract OAuth authorization code from body: ${body} - ${e.message}")
     }
 }
 
@@ -185,7 +196,7 @@ def doOAuthAuthentication(authCode) {
     {
         if(e.message.toString() != "OK")
         {
-            log.error("Unable to POST to OAuth authentication with authCode ${authCode} - ${e.message}")
+            log.error("AirThings: unable to POST to OAuth authentication with authCode ${authCode} - ${e.message}")
         }
     }
 }
@@ -193,24 +204,24 @@ def doOAuthAuthentication(authCode) {
 def handleOAuthAuthentication(response, data) {
     if(response.hasError())
     {
-        log.error("OAuth Authentication response.error = ${response.getErrorMessage()}")
+        log.error("AirThings: OAuth Authentication response.error = ${response.getErrorMessage()}")
         return;
     }
     if(response.getStatus() != 200) {
-        log.error("OAuth Authentication Unexpected HTTP Status Code: ${response.getStatus()}")
+        log.error("AirThings: OAuth Authentication Unexpected HTTP Status Code: ${response.getStatus()}")
         return;
     }
     def body = response.getJson()
     if(!body.containsKey("access_token")) {
-        log.error("OAuth Authentication HTTP response did not contain 'access_token': ${body}")
+        log.error("AirThings: OAuth Authentication HTTP response did not contain 'access_token': ${body}")
         return;
     }
     try {
         def accessToken = body.get("access_token").trim();
-        log.debug("Successfully obtained OAuth authentication token")
+        if (debug) log.debug("AirThings: successfully obtained OAuth authentication token")
         fetchStatistics(accessToken)
     } catch (Exception e) {
-        log.error("Unable to extract OAuth Authentication token from body: ${body}")
+        log.error("AirThings: unable to extract OAuth Authentication token from body: ${body}")
     }
 }
 
@@ -222,7 +233,7 @@ def fetchStatistics(access_token) {
             def dateNow = new Date();
             def startRange = (dateNow - 1.hours).format("yyyy-MM-dd'T'HH:mm:ss")
             def endRange = (dateNow + 1.hours).format("yyyy-MM-dd'T'HH:mm:ss")
-            log.info("Fetching statistics between ${startRange} and ${endRange}")
+            if (debug) log.debug("AirThings: fetching statistics between ${startRange} and ${endRange}")
             asynchttpGet('handleStatistics', [
                 uri: "https://web-api.airthin.gs/v1/devices/${deviceId}/segments/latest/samples?from=${startRange}&to=${endRange}",
                 headers: [
@@ -238,24 +249,24 @@ def fetchStatistics(access_token) {
     {
         if(e.message.toString() != "OK")
         {
-            log.error("Unable to retrieve CSV download URL for deviceId: ${deviceId} - ${e.message}")
+            log.error("AirThings: unable to retrieve CSV download URL for deviceId: ${deviceId} - ${e.message}")
         }
     }
 }
 
 def handleStatistics(response, data){
     if(response.hasError()) {
-        log.error("response.error = ${response.getErrorMessage()}")
+        log.error("AirThings: response.error = ${response.getErrorMessage()}")
         return;
     }
     if(response.getStatus() != 200) {
-        log.error("Unexpected HTTP Status Code: ${response.getStatus()}")
+        log.error("AirThings: unexpected HTTP Status Code: ${response.getStatus()}")
         return;
     }
 
     def body = response.getJson()
     if(!body.containsKey("sensors")) {
-        log.error("HTTP response did not contain expected response: ${body}")
+        log.error("AirThings: HTTP response did not contain expected response: ${body}")
         return;
     }
 
@@ -267,7 +278,7 @@ def handleStatistics(response, data){
 
     boolean dataFetched = false;
     for (def sensor : body.get("sensors")) {
-        log.debug("Parsing statistics for sensor ${sensor.type}")
+        if (debug) log.debug("AirThings: parsing statistics for sensor ${sensor.type}")
         if ("radonShortTermAvg".equalsIgnoreCase(sensor.type) && sensor.measurements.size() > 0) {
             Double value = sensor.measurements[sensor.measurements.size() - 1];
             sendEvent(name: "radonShortTermAvg", value: value, unit: "pCi/L", isStateChange: !value.equals(device.currentValue("radonShortTermAvg")))
@@ -297,8 +308,25 @@ def handleStatistics(response, data){
 
     if (dataFetched) {
         sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd'T'HH:mm:ss"), isStateChange: true)
-        log.info("Completed processing statistics for deviceId: ${deviceId}")
+        if (debug) log.debug("AirThings: completed processing statistics for deviceId: ${deviceId}")
     } else {
-        log.info("Unable to process statistics for deviceId: ${deviceId}")
+        log.error("AirThings: unable to process statistics for deviceId: ${deviceId}")
     }
+}
+
+def poll_schedule() {
+  poll()
+}
+
+def initialize() {
+  unschedule()
+  if (debug) log.debug("AirThings: initialize() called")
+
+  if (!acurite_username || !acurite_password || !device_id) {
+    log.error("AirThings: required fields not completed.  Please complete for proper operation.")
+    return
+  }
+  def poll_interval_cmd = (settings?.poll_interval ?: "5 Minutes").replace(" ", "")
+  "runEvery${poll_interval_cmd}"(poll_schedule)
+  if (debug) log.debug("AirThings: scheduling as runEvery" + poll_interval_cmd)
 }
