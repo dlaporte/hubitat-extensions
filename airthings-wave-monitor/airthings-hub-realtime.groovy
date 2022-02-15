@@ -75,8 +75,7 @@ def poll() {
 }
 
 def fetchData() {
-  if (debug) log.debug("AirThings: attempting to fetch data via CSV download -- last pull date: ${device.currentValue("
-    lastUpdate ")}")
+  if (debug) log.debug("AirThings: attempting to fetch data via CSV download -- last pull date: ${device.currentValue("lastUpdate ")}")
   doLogin()
 }
 
