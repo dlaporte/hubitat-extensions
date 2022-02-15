@@ -45,6 +45,8 @@ metadata {
     capability "Pressure Measurement"
     capability "Carbon Dioxide Measurement"
     capability "Pressure Measurement"
+    capability "pHMeasurement"
+    capability "SoundPressureLevel"
     capability "Initialize"
     capability "Polling"
     capability "Battery"
@@ -55,7 +57,12 @@ metadata {
     attribute "pressure", "number"
     attribute "carbonDioxide", "number"
     attribute "tVOC", "number"
+    # kludge to pass tVOC to Influx
+    attribute "pH", "number"
     attribute "radonShortTermAvg", "number"
+    # kludge to pass radon to Influx
+    attribute "soundPressureLevel", "number"
+
     attribute "lastUpdate", "date"
 
     preferences {
@@ -269,6 +276,7 @@ def handleStatistics(response, data) {
     if ("radonShortTermAvg".equalsIgnoreCase(sensor.type) && sensor.measurements.size() > 0) {
       Double value = sensor.measurements[sensor.measurements.size() - 1];
       sendEvent(name: "radonShortTermAvg", value: value, unit: "pCi/L", isStateChange: !value.equals(device.currentValue("radonShortTermAvg")))
+      sendEvent(name: "soundPressureLevel", value: value, unit: "pCi/L", isStateChange: !value.equals(device.currentValue("radonShortTermAvg")))
       dataFetched = true
     } else if ("temp".equalsIgnoreCase(sensor.type) && sensor.measurements.size() > 0) {
       Double value = sensor.measurements[sensor.measurements.size() - 1];
@@ -289,6 +297,7 @@ def handleStatistics(response, data) {
     } else if ("voc".equalsIgnoreCase(sensor.type) && sensor.measurements.size() > 0) {
       Integer value = sensor.measurements[sensor.measurements.size() - 1];
       sendEvent(name: "tVOC", value: value, unit: "ppb", isStateChange: !value.equals(device.currentValue("tVOC")))
+      sendEvent(name: "pH", value: value, unit: "ppb", isStateChange: !value.equals(device.currentValue("tVOC")))
       dataFetched = true
     }
   }
